@@ -3,13 +3,13 @@
 
 % otwarcie pliku do odczytu
 openRead(FileName) ->
-	io:format("Otwieranie pliku ~s do odczytu...",[FileName]),
+	io:format("Opening file ~s for reading...",[FileName]),
 	{ok,FD} = file:open(FileName,[read,compressed]),
 	case file:read(FD,1) of 
 		{ok,[Data]} ->
 			io:format("OK~n",[]), 
 			{FD,Data};
-		eof -> io:format("~nKoniec pliku~n",[]);
+		eof -> io:format("~nEOF~n",[]);
 		{error,Reason} -> io:format("~n~s~n",[Reason])
 	end.
 % -------------------------------------------------------------------
@@ -18,14 +18,14 @@ openRead(FileName) ->
 readData(FD,Length) ->
 	case file:read(FD,Length) of 
 		{ok,Data} -> lists:map(fun(X) -> X-48 end, Data);
-		eof -> io:format("~nKoniec pliku~n",[]);
+		eof -> io:format("~nEOF~n",[]);
 		{error,Reason} -> io:format("~n~s~n",[Reason])
 	end.
 % -------------------------------------------------------------------
 
 % otwarcie pliku do zapisu
 openWrite(FileName,Size)->
-	io:format("Otwieranie pliku ~s do zapisu...",[FileName]),
+	io:format("Opening file ~s for writing...",[FileName]),
 	{ok,FD} = file:open(FileName,[write,compressed]),
 	file:write(FD,Size),
 	io:format("OK~n",[]), 
@@ -41,7 +41,7 @@ writeData(FD,Data) ->
 readBoard(FileName) ->
 	{FD,Size} = openRead(FileName),
 	Len = trunc(math:pow(2,Size)),
-	io:format("Wczytywanie planszy: ~Bx~B (~B)~n",[Len,Len,Size]),
+	io:format("Reading board: ~Bx~B (~B)~n",[Len,Len,Size]),
 	Board = createNewBoard(Len+2,Len+2),
 	Data = getData(FD,Len,1,Len,Board),
 	file:close(FD),
@@ -72,7 +72,7 @@ writeBoard(FileName, Board) ->
 	Len = array:size(Board)-2,
 	Size = trunc(math:sqrt(Len)),
 	{ok,FD} = openWrite(FileName,Size),
-	io:format("Zapis planszy o rozmiarze ~Bx~B...",[Len, Len]), 
+	io:format("Saving board of size ~Bx~B...",[Len, Len]), 
 	file:write(FD,[Size]),
 	saveArray(FD, Len, 1, Len, Board),
 	file:close(FD),
@@ -100,7 +100,7 @@ writePartOfBoard(FD, Size, Board) ->
 readBoardAsList(FileName) ->
 	{FD,Size} = openRead(FileName),
 	Len = trunc(math:pow(2,Size)),
-	io:format("Wczytywanie planszy: ~Bx~B (~B)~n",[Len,Len,Size]),
+	io:format("Reading board: ~Bx~B (~B)~n",[Len,Len,Size]),
 	Data = getDataAsList(FD,Len,Len, []),
 	file:close(FD),
 	Data.
@@ -114,7 +114,7 @@ getDataAsList(FD,Len,Count,Acc) ->
 writeRandomBoard(Filename,Size) ->
 	Len = trunc(math:pow(2,Size)),
 	{ok,FD} = openWrite(Filename,Size),
-	io:format("Zapis planszy o rozmiarze ~Bx~B...",[Len, Len]), 
+	io:format("Saving board of size ~Bx~B...",[Len, Len]), 
 	file:write(FD,[Size]),
 	randomData(FD,Len,Len),
 	file:close(FD),
