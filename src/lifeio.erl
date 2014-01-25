@@ -1,6 +1,7 @@
 -module(lifeio).
--export([openRead/1,openWrite/2,readBoard/1,writeRandomBoard/1,writeBoard/2,createNewBoard/2,readBoardAsList/1]).
+-export([openRead/1,openWrite/2,readBoard/1,readPartOfBoard/3,readBoardAsList/1,writeRandomBoard/2,writeBoard/2, writePartOfBoard/3,createNewBoard/2]).
 
+% otwarcie pliku do odczytu
 openRead(FileName) ->
 	io:format("Otwieranie pliku ~s do odczytu...",[FileName]),
 	{ok,FD} = file:open(FileName,[read,compressed]),
@@ -11,36 +12,32 @@ openRead(FileName) ->
 		eof -> io:format("~nKoniec pliku~n",[]);
 		{error,Reason} -> io:format("~n~s~n",[Reason])
 	end.
+% -------------------------------------------------------------------
 
+% odczyt porcji danych z pliku
 readData(FD,Length) ->
 	case file:read(FD,Length) of 
 		{ok,Data} -> lists:map(fun(X) -> X-48 end, Data);
 		eof -> io:format("~nKoniec pliku~n",[]);
 		{error,Reason} -> io:format("~n~s~n",[Reason])
 	end.
+% -------------------------------------------------------------------
 
+% otwarcie pliku do zapisu
 openWrite(FileName,Size)->
 	io:format("Otwieranie pliku ~s do zapisu...",[FileName]),
 	{ok,FD} = file:open(FileName,[write,compressed]),
 	file:write(FD,Size),
 	io:format("OK~n",[]), 
 	{ok,FD}.
+% -------------------------------------------------------------------
 
+% zapisanie danych do pliku
 writeData(FD,Data) ->
 	file:write(FD,Data).
+% -------------------------------------------------------------------
 
-readBoardAsList(FileName) ->
-	{FD,Size} = openRead(FileName),
-	Len = trunc(math:pow(2,Size)),
-	io:format("Wczytywanie planszy: ~Bx~B (~B)~n",[Len,Len,Size]),
-	Data = getDataAsList(FD,Len,Len, []),
-	file:close(FD),
-	Data.
-
-getDataAsList(_FD,_Len,0,Acc) -> lists:reverse(Acc);
-getDataAsList(FD,Len,Count,Acc) ->
-	getDataAsList(FD,Len,Count-1,[readData(FD,Len)|Acc]).
-
+% wczytywanie całej planszy z pliku o nazwie FileName, zwraca dwuwymiarową tablicę
 readBoard(FileName) ->
 	{FD,Size} = openRead(FileName),
 	Len = trunc(math:pow(2,Size)),
@@ -63,6 +60,14 @@ setRow(Count, [H|T], RowArr) ->
 	RowArr2 = array:set(Count, H, RowArr),
 	setRow(Count+1, T, RowArr2).
 
+% wczytywanie określonej ilość wierszy planszy z pliku, zwraca dwuwymiarową tablicę
+readPartOfBoard(FD, Size, HowManyRows) ->
+	Len = trunc(math:pow(2,Size)),
+	Board = createNewBoard(HowManyRows+2,Len+2),
+	getData(FD,Len,1,HowManyRows,Board).
+% -------------------------------------------------------------------
+
+% zapisywanie tablicy Board do pliku o nazwie FileName
 writeBoard(FileName, Board) ->
 	Len = array:size(Board)-2,
 	Size = trunc(math:sqrt(Len)),
@@ -84,9 +89,31 @@ arrayToList(_Len, 0, _Row, Acc) -> Acc;
 arrayToList(Len, Count, Row, Acc) ->
 	arrayToList(Len, Count-1, Row, [array:get(Count, Row)|Acc]).
 
-writeRandomBoard(Size) ->
+%zapisywanie części planszy do pliku
+writePartOfBoard(FD, Size, Board) ->
 	Len = trunc(math:pow(2,Size)),
-	{ok,FD} = openWrite('board.gz',Size),
+	Rows = array:size(Board)-2,
+	saveArray(FD, Len, 1, Rows, Board).
+% -------------------------------------------------------------------
+
+% wczytywanie planszy z pliku o nazwie FileName, zwraca listę list (wierszy)
+readBoardAsList(FileName) ->
+	{FD,Size} = openRead(FileName),
+	Len = trunc(math:pow(2,Size)),
+	io:format("Wczytywanie planszy: ~Bx~B (~B)~n",[Len,Len,Size]),
+	Data = getDataAsList(FD,Len,Len, []),
+	file:close(FD),
+	Data.
+
+getDataAsList(_FD,_Len,0,Acc) -> lists:reverse(Acc);
+getDataAsList(FD,Len,Count,Acc) ->
+	getDataAsList(FD,Len,Count-1,[readData(FD,Len)|Acc]).
+% -------------------------------------------------------------------
+
+% generowanie i zapisywanie losowej planszy o rozmiarze 2^Size do pliku na nazwie Filename
+writeRandomBoard(Filename,Size) ->
+	Len = trunc(math:pow(2,Size)),
+	{ok,FD} = openWrite(Filename,Size),
 	io:format("Zapis planszy o rozmiarze ~Bx~B...",[Len, Len]), 
 	file:write(FD,[Size]),
 	randomData(FD,Len,Len),
@@ -98,7 +125,9 @@ randomData(FD,Count,Len) ->
 	Data = [random:uniform(2)+47 || _ <- lists:seq(1, Len)],
 	writeData(FD,Data),
 	randomData(FD,Count-1,Len).
+% -------------------------------------------------------------------
 
+% tworzenie dwuwymiarowej tablicy
 createNewBoard(X, Y) ->
 	array:map(fun(_, _) -> createNewRow(Y) end, array:new([{size,X},{fixed,true}])).
 
