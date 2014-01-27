@@ -18,14 +18,11 @@ start_computing(Board) ->
 
 
 
-%funkcja czekająca na polecenia od supervisora (next lub stop)
+% funkcja czekająca na polecenia od supervisora (next lub stop)
 run(first, N, {Down}, Board) ->
-	%io:format("Run first~n"),
 	Result = receive
 		{Supervisor, next} -> 
-			%io:format("Next first~n"),
 			NewBoard = next(first, {Down}, Board),
-			%io:format("After Next first~n"),
 			Supervisor ! {self(), done},
 			NewBoard;
 		{Supervisor, stop} -> Supervisor ! {self(), finish, N, Board}, exit(done)
@@ -33,12 +30,9 @@ run(first, N, {Down}, Board) ->
 	run(first, N, {Down}, Result);
 	
 run(middle, N, {Up, Down}, Board) ->
-	%io:format("Run middle~n"),
 	Result = receive
 		{Supervisor, next} -> 
-			%io:format("Next middle~n"),
 			NewBoard = next(middle, {Up, Down}, Board),
-			%io:format("After Next middle~n"),
 			Supervisor ! {self(), done},
 			NewBoard;
 		{Supervisor, stop} -> Supervisor ! {self(), finish, N, Board}, exit(done)
@@ -46,12 +40,9 @@ run(middle, N, {Up, Down}, Board) ->
 	run(middle, N, {Up, Down}, Result);
 	
 run(last, N, {Up}, Board) ->
-	%io:format("Run last~n"),
 	Result = receive
 		{Supervisor, next} -> 
-			%io:format("Next last~n"),
 			NewBoard = next(last, {Up}, Board),
-			%io:format("After Next last~n"),
 			Supervisor ! {self(), done},
 			NewBoard;
 		{Supervisor, stop} -> Supervisor ! {self(), finish, N, Board}, exit(done)
@@ -63,10 +54,8 @@ run(last, N, {Up}, Board) ->
 % funkcja odpowiadająca za wymianę wierszy pomiędzy węzłami i wykonanie iteracji
 next(first, {Down}, Board) ->
 	Down ! {up, array:get(array:size(Board)-2, Board)},
-	%io:format("First - column was sent~n"),
 	UpdatedBoard = receive
 		{down, Row} -> 
-			%io:format("First - column was received~n"), 
 			array:set(array:size(Board)-1,Row,Board)
 	end,
 	computeRows(array:size(Board)-2, array:size(Board)-2, UpdatedBoard, Board);
@@ -74,25 +63,20 @@ next(first, {Down}, Board) ->
 next(middle, {Up, Down}, Board) ->
 	Down ! {up, array:get(array:size(Board)-2, Board)},
 	Up ! {down, array:get(1, Board)},
-	%io:format("Middle - columns was sent~n"),
 	UpdatedBoard = receive
 		{down, Row} -> array:set(array:size(Board)-1,Row,Board);
 		{up, Row} -> array:set(0,Row,Board)
 	end,
-	%io:format("Middle - first column was received~n"),
 	UpdatedBoard2 = receive
 		{down, Row2} -> array:set(array:size(UpdatedBoard)-1,Row2,UpdatedBoard);
 		{up, Row2} -> array:set(0,Row2,UpdatedBoard)
 	end,
-	%io:format("Middle - second column was received~n"),
 	computeRows(array:size(Board)-2, array:size(Board)-2, UpdatedBoard2, Board);
 
 next(last, {Up}, Board) ->
 	Up ! {down, array:get(1, Board)},
-	%io:format("Last - column was sent~n"),
 	UpdatedBoard = receive
-		{up, Row} -> 
-			%io:format("Last - column was received~n"), 
+		{up, Row} ->  
 			array:set(0,Row,Board)
 	end,
 	computeRows(array:size(Board)-2, array:size(Board)-2, UpdatedBoard, Board).
@@ -101,7 +85,6 @@ next(last, {Up}, Board) ->
 
 % obliczanie nowej konfiguracji planszy
 computeRows(_Len, 0, _Board, NewBoard) -> 
-	%io:format("Cumputing done~n"),
 	NewBoard;
 computeRows(Len, Count, Board, NewBoard) ->
 	Row = array:get(Count, NewBoard),

@@ -1,8 +1,8 @@
 -module(life_supervisor).
--export([init/2, next/2, test_time/2, stop/2]).
+-export([init/3, next/2, test_time/2, stop/2]).
 
 % funkcja inicjalizacyjna, zwraca listę PID'ów
-init(HowManyNodes,Filename) when HowManyNodes >= 2 ->
+init(HowManyNodes,Proccesses,Filename) when HowManyNodes >= 2 andalso Proccesses >= 1->
 	Nodes = net_adm:world(),
 	if
 		length(Nodes) < HowManyNodes ->
@@ -13,19 +13,19 @@ init(HowManyNodes,Filename) when HowManyNodes >= 2 ->
 	NodesToUse = lists:sublist(Nodes,1,HowManyNodes),
 	c:nl(worker),
 	{FD, Size} = lifeio:openRead(Filename),
-
 	Length = trunc(math:pow(2,Size)),
-	Rows = Length div HowManyNodes,
-	RowsLast = trunc(Length - ((HowManyNodes-1)*Rows)),
-	Temp = lists:duplicate(HowManyNodes-1, Rows),
+	HowManyProccesses = HowManyNodes*Proccesses,
+	Rows = Length div HowManyProccesses,
+	RowsLast = trunc(Length - ((HowManyProccesses-1)*Rows)),
+	Temp = lists:duplicate(HowManyProccesses-1, Rows),
 	ListOfRows = lists:append(Temp, [RowsLast]),
-
-	ThreadsList = startThreads(HowManyNodes, NodesToUse, ListOfRows, [], FD, Size),
+	NodesMulProccesses = dupNodes(Proccesses,HowManyNodes,NodesToUse,[]),
+	ThreadsList = startThreads(HowManyProccesses, NodesMulProccesses, ListOfRows, [], FD, Size),
 	TArray = array:from_list(ThreadsList),
-	Temp2 = lists:append([first], lists:duplicate(HowManyNodes-2,middle)),
+	Temp2 = lists:append([first], lists:duplicate(HowManyProccesses-2,middle)),
 	Type = lists:append(Temp2, [last]),
 	TyArray = array:from_list(Type),
-	sendStartMsg(HowManyNodes, HowManyNodes, TArray, TyArray),
+	sendStartMsg(HowManyProccesses, HowManyProccesses, TArray, TyArray),
 	ThreadsList.
 
 % funkcja next, N - ilość iteracji; Nodes - lista PID'ów
@@ -63,6 +63,12 @@ startThreads(N, [H|T], [HL|TL], L, FD, Size) ->
 	Pid = spawn(H, worker, start_computing, [lifeio:readPartOfBoard(FD, Size, HL)]),
 	io:format("Thread created: ~p~n",[Pid]),
 	startThreads(N-1, T, TL, [Pid|L], FD, Size).
+% ----------------------------------------------------------------
+
+% powielanie nazw węzłów
+dupNodes(_Proccesses,0,_NodesToUse,Nodes) -> Nodes;
+dupNodes(Proccesses,Count,[H|T],Nodes) ->
+	dupNodes(Proccesses,Count-1,T,lists:append(Nodes,lists:duplicate(Proccesses,H))).
 % ----------------------------------------------------------------
 
 % wysłanie do węzłów wiadomości 'start'
